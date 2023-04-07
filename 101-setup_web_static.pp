@@ -1,62 +1,42 @@
-# Script that configures Nginx server with some folders and files
+# deploy static
+$whisper_dirs = [ '/data/', '/data/web_static/',
+                        '/data/web_static/releases/', '/data/web_static/shared/',
+                        '/data/web_static/releases/test/'
+                  ]
 
-exec {'update':
-  provider => shell,
-  command  => 'sudo apt-get -y update',
-  before   => Exec['install Nginx'],
+package {'nginx':
+  ensure  => installed,
 }
 
-exec {'install Nginx':
-  provider => shell,
-  command  => 'sudo apt-get -y install nginx',
-  before   => Exec['start Nginx'],
+file { $whisper_dirs:
+        ensure  => 'directory',
+        owner   => 'ubuntu',
+        group   => 'ubuntu',
+        recurse => 'remote',
+        mode    => '0777',
+}
+file { '/data/web_static/current':
+  ensure => link,
+  target => '/data/web_static/releases/test/',
+}
+file {'/data/web_static/releases/test/index.html':
+  ensure  => present,
+  content => 'Holberton School for the win!',
 }
 
-exec {'start Nginx':
-  provider => shell,
-  command  => 'sudo service nginx start',
-  before   => Exec['create first directory'],
+exec { 'chown -R ubuntu:ubuntu /data/':
+  path => '/usr/bin/:/usr/local/bin/:/bin/'
 }
 
-exec {'create first directory':
-  provider => shell,
-  command  => 'sudo mkdir -p /data/web_static/releases/test/',
-  before   => Exec['create second directory'],
+file_line {'deploy static':
+  path  => '/etc/nginx/sites-available/default',
+  after => 'server_name _;',
+  line  => "\n\tlocation /hbnb_static {\n\t\talias /data/web_static/current/;\n\t}",
 }
 
-exec {'create second directory':
-  provider => shell,
-  command  => 'sudo mkdir -p /data/web_static/shared/',
-  before   => Exec['content into html'],
+service {'nginx':
+  ensure  => running,
 }
 
-exec {'content into html':
-  provider => shell,
-  command  => 'echo "Holberton School" | sudo tee /data/web_static/releases/test/index.html',
-  before   => Exec['symbolic link'],
-}
-
-exec {'symbolic link':
-  provider => shell,
-  command  => 'sudo ln -sf /data/web_static/releases/test/ /data/web_static/current',
-  before   => Exec['put location'],
-}
-
-exec {'put location':
-  provider => shell,
-  command  => 'sudo sed -i \'38i\\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t\tautoindex off;\n\t}\n\' /etc/nginx/sites-available/default',
-  before   => Exec['restart Nginx'],
-}
-
-exec {'restart Nginx':
-  provider => shell,
-  command  => 'sudo service nginx restart',
-  before   => File['/data/']
-}
-
-file {'/data/':
-  ensure  => directory,
-  owner   => 'ubuntu',
-  group   => 'ubuntu',
-  recurse => true,
+exec {'/etc/init.d/nginx restart':
 }
