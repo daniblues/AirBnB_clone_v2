@@ -1,18 +1,21 @@
 #!/usr/bin/python3
-""" Function that compress a folder """
-from datetime import datetime
+"""web server distribution
+    """
 from fabric.api import local
-import os
+import tarfile
+import os.path
+import re
+from datetime import datetime
 
 
 def do_pack():
-    try:
-        if not os.path.exists("versions"):
-            local('mkdir versions')
-        t = datetime.now()
-        f = "%Y%m%d%H%M%S"
-        archive_path = 'versions/web_static_{}.tgz'.format(t.strftime(f))
-        local('tar -cvzf {} web_static'.format(archive_path))
-        return archive_path
-    except:
+    """distributes an archive to your web servers
+    """
+    target = local("mkdir -p versions")
+    name = str(datetime.now()).replace(" ", '')
+    opt = re.sub(r'[^\w\s]', '', name)
+    tar = local('tar -cvzf versions/web_static_{}.tgz web_static'.format(opt))
+    if os.path.exists("./versions/web_static_{}.tgz".format(opt)):
+        return os.path.normpath("/versions/web_static_{}.tgz".format(opt))
+    else:
         return None
